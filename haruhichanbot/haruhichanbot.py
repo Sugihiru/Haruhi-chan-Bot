@@ -1,5 +1,6 @@
 import logging
 import inspect
+import random
 
 import discord
 
@@ -71,3 +72,55 @@ class HaruhiChanBot(discord.Client):
                 cmd_name=cmd_name[4:],
                 desc=doc))
         return '\n'.join(help_msg)
+
+    async def cmd_random(self, cmd_args):
+        """
+        Pick a random number between specified numbers (included)
+        If no numbers are specified, pick a number between 0 and 1
+        If one number is specified, pick a number between 0 and this number
+        If two numbers are specified, pick a number between nb1 and nb2
+
+        Usage:
+            {command_prefix}random
+            {command_prefix}random nb
+            {command_prefix}random nb1 nb2
+        """
+        start = 0
+        end = 1
+
+        if len(cmd_args) == 1:
+            try:
+                end = int(cmd_args[0])
+                if end <= start:
+                    raise ValueError
+            except ValueError:
+                return "Invalid argument: please provide a strictly positive integer"
+
+        elif len(cmd_args) == 2:
+            try:
+                nb1 = int(cmd_args[0])
+                nb2 = int(cmd_args[0])
+            except ValueError:
+                return "Invalid argument: please provide an integer"
+            if nb1 == nb2:
+                return "Invalid argument: please use different numbers"
+            # Set numbers so that start < end
+            start = nb1 if nb1 < nb2 else nb2
+            end = nb1 if nb1 > nb2 else nb2
+
+        elif len(cmd_args) > 2:
+            return "Invalid argument: please use at most 2 numbers"
+
+        result = random.randint(start, end)
+        return "random in [{0}, {1}] = {2}".format(start, end, result)
+
+    async def cmd_coinflip(self):
+        """
+        Flip a coin and display the result (heads or tails)
+
+        Usage:
+            {command_prefix}coinflip
+        """
+        if random.randint(0, 1) == 0:
+            return "Heads!"
+        return "Tails!"
