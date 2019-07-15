@@ -11,6 +11,8 @@ class Config():
         parser.read(config_file, encoding="utf-8")
 
         self.bot_token = parser.get("Credentials", "BotToken")
+        self.command_prefix = parser.get(
+            "Chat", "CommandPrefix")
 
 
 class ConfigDefaults():
