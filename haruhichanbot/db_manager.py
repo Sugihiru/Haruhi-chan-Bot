@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
@@ -10,9 +10,19 @@ Session = None
 session = None
 
 
+class UserAccounts(Base):
+    __tablename__ = "user_accounts"
+    account_id = Column(Integer, primary_key=True)
+    discord_user_id = Column(Integer, nullable=False)
+    account_source = Column(String, nullable=False)
+    account_server = Column(String)
+    account_name = Column(String, nullable=False)
+    comment = Column(String)
+
+
 def init_session(config):
     """
-    Initialize the sqlalchemy session
+    Initialize the sqlalchemy session and create tables in database
     """
     global engine
     global Session
@@ -29,3 +39,4 @@ def init_session(config):
     engine = create_engine(connect_url, pool_recycle=3600)
     Session = sessionmaker(bind=engine)
     session = Session()
+    Base.metadata.create_all(engine)
