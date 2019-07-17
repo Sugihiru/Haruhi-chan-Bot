@@ -1,3 +1,5 @@
 discord.py
 configparser
 argparse
+sqlalchemy
+mysqlclient

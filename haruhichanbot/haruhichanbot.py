@@ -5,12 +5,14 @@ import random
 import discord
 
 from .config import Config
+from . import db_manager
 
 
 class HaruhiChanBot(discord.Client):
     def __init__(self, config_file=None):
         super().__init__()
         self.config = Config(config_file)
+        db_manager.init_session(self.config)
 
     def run(self):
         super().run(self.config.bot_token)
