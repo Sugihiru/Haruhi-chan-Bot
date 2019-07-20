@@ -3,6 +3,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
 
+from . import exceptions
+
 Base = declarative_base()
 # These globals are initialized in init_session()
 engine = None
@@ -42,3 +44,31 @@ def init_session(config):
     Session = sessionmaker(bind=engine)
     session = Session()
     Base.metadata.create_all(engine)
+
+
+def insert_user_account(*, discord_user_id,
+                        account_source,
+                        account_server=None,
+                        account_name,
+                        comment=None):
+    """
+    Insert a new user account in database, and commit session
+    If entry already exists, raise exceptions.DuplicateDbEntryWarning
+    """
+    exists = (session.query(UserAccounts.account_id)
+                     .filter_by(discord_user_id=discord_user_id,
+                                account_source=account_source,
+                                account_server=account_server,
+                                account_name=account_name)
+                     .scalar() is not None)
+    if exists:
+        raise exceptions.DuplicateDbEntryWarning(
+            "Duplicate entry in database. Value not inserted.")
+
+    dbobj = UserAccounts(discord_user_id=discord_user_id,
+                         account_source=account_source,
+                         account_server=account_server,
+                         account_name=account_name,
+                         comment=comment)
+    session.add(dbobj)
+    session.commit()
