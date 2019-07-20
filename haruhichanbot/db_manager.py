@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String
+from sqlalchemy import create_engine, Column, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.engine.url import URL
@@ -14,10 +14,10 @@ class UserAccounts(Base):
     __tablename__ = "user_accounts"
     account_id = Column(Integer, primary_key=True)
     discord_user_id = Column(Integer, nullable=False)
-    account_source = Column(String, nullable=False)
-    account_server = Column(String)
-    account_name = Column(String, nullable=False)
-    comment = Column(String)
+    account_source = Column(String(64), nullable=False)
+    account_server = Column(String(64))
+    account_name = Column(String(64), nullable=False)
+    comment = Column(Text)
 
 
 def init_session(config):
