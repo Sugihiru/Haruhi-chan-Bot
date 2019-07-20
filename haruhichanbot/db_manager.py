@@ -13,7 +13,9 @@ session = None
 class UserAccounts(Base):
     __tablename__ = "user_accounts"
     account_id = Column(Integer, primary_key=True)
-    discord_user_id = Column(Integer, nullable=False)
+    # Note: most of the Discord snowflake ID are 18 characters
+    # but there's no official infos on the max length of those ID
+    discord_user_id = Column(String(20), nullable=False)
     account_source = Column(String(64), nullable=False)
     account_server = Column(String(64))
     account_name = Column(String(64), nullable=False)
