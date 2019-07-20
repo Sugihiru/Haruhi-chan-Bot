@@ -1,21 +1,36 @@
 import logging
 import inspect
 import random
+import textwrap
 
 import discord
 
 from .config import Config
+from .account_registration_config import AccountRegistrationConfig
 from . import db_manager
 
 
 class HaruhiChanBot(discord.Client):
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None,
+                 account_registration_config_file=None):
         super().__init__()
         self.config = Config(config_file)
+        self.acc_registration_cfg = AccountRegistrationConfig(
+            account_registration_config_file)
         db_manager.init_session(self.config)
 
     def run(self):
         super().run(self.config.bot_token)
+
+    def _prettify_docstring(self, docstring):
+        """
+        Returns a docstring with clean indentation and
+        proper replacement of strings like {command_prefix}
+        """
+        pretty_docstring = textwrap.dedent(docstring)
+        pretty_docstring = pretty_docstring.replace("{command_prefix}",
+                                                    self.config.command_prefix)
+        return pretty_docstring
 
     async def on_ready(self):
         logger = logging.getLogger("haruhichanbot")
@@ -126,3 +141,46 @@ class HaruhiChanBot(discord.Client):
         if random.randint(0, 1) == 0:
             return "Heads!"
         return "Tails!"
+
+    async def cmd_register_account(self, cmd_args):
+        """
+        Register a game or website account and link it to your profile on this server
+
+        Usage:
+            {command_prefix}register_account game_or_website [server] name_or_id
+            Ex: {command_prefix}register_account azurlane sandy 123123123
+        """
+        async def help(self):
+            msg = "```{0}```\n{1}".format(
+                self._prettify_docstring(self.cmd_register_account.__doc__),
+                await self.get_register_accounts_infos())
+            return msg
+
+        if len(cmd_args) == 1 and cmd_args[0] == "help":
+            return await help(self)
+        if len(cmd_args) <= 1 or len(cmd_args) > 3:
+            return "Invalid number of arguments.\n" + await help(self)
+
+    async def get_register_accounts_infos(self):
+        """
+        Returns a human-readable string of all games & website,
+        their aliases and their servers if applicable.
+        """
+        msg = list()
+        msg.append("```Game/Website (aliases): Servers")
+
+        for source, source_infos in (self.acc_registration_cfg
+                                         .account_sources.items()):
+            if source_infos["servers"]:
+                servs = ", ".join(source_infos["servers"])
+            else:
+                servs = "N/A"
+            if source_infos["aliases"]:
+                aliases = ", ".join(source_infos["aliases"])
+                msg.append("\t- {src} ({aliases}): {servs}".format(
+                    src=source, aliases=aliases, servs=servs))
+            else:
+                msg.append("\t- {src}: {servs}".format(
+                    src=source, servs=servs))
+        msg.append("```")
+        return "\n".join(msg)
