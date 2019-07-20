@@ -1,19 +1,37 @@
 import logging
 import inspect
 import random
+import textwrap
 
 import discord
 
 from .config import Config
+from .account_registration_config import AccountRegistrationConfig
+from . import db_manager
+from . import exceptions
 
 
 class HaruhiChanBot(discord.Client):
-    def __init__(self, config_file=None):
+    def __init__(self, config_file=None,
+                 account_registration_config_file=None):
         super().__init__()
         self.config = Config(config_file)
+        self.acc_registration_cfg = AccountRegistrationConfig(
+            account_registration_config_file)
+        db_manager.init_session(self.config)
 
     def run(self):
         super().run(self.config.bot_token)
+
+    def _prettify_docstring(self, docstring):
+        """
+        Returns a docstring with clean indentation and
+        proper replacement of strings like {command_prefix}
+        """
+        pretty_docstring = textwrap.dedent(docstring)
+        pretty_docstring = pretty_docstring.replace("{command_prefix}",
+                                                    self.config.command_prefix)
+        return pretty_docstring
 
     async def on_ready(self):
         logger = logging.getLogger("haruhichanbot")
@@ -46,6 +64,8 @@ class HaruhiChanBot(discord.Client):
         params = inspect.signature(handler).parameters.copy()
 
         handler_kwargs = {}
+        if params.pop('user_id', None):
+            handler_kwargs['user_id'] = message.author.id
         if params.pop('cmd_args', None):
             handler_kwargs['cmd_args'] = args
 
@@ -124,3 +144,90 @@ class HaruhiChanBot(discord.Client):
         if random.randint(0, 1) == 0:
             return "Heads!"
         return "Tails!"
+
+    async def cmd_register_account(self, user_id, cmd_args):
+        """
+        Register a game or website account and link it to your profile on this server
+
+        Usage:
+            {command_prefix}register_account game_or_website [server] name_or_id
+            Ex: {command_prefix}register_account azurlane sandy 123123123
+        """
+        async def help(self):
+            msg = "```{0}```\n{1}".format(
+                self._prettify_docstring(self.cmd_register_account.__doc__),
+                await self.get_register_accounts_infos())
+            return msg
+
+        if len(cmd_args) == 1 and cmd_args[0] == "help":
+            return await help(self)
+        if len(cmd_args) <= 1 or len(cmd_args) > 3:
+            return "Invalid number of arguments.\n" + await help(self)
+
+        acc_source_infos = (self.acc_registration_cfg
+                                .get_account_source_infos(cmd_args[0]))
+        if not acc_source_infos:
+            return ("Game/Website '{0}' not found.\n".format(cmd_args[0]) +
+                    "See help for a list of available game/websites")
+
+        acc_source, source_infos = acc_source_infos
+        if source_infos["servers"] is None and len(cmd_args) == 3:
+            return ("Warning: this game/website doesn't have any servers.\n" +
+                    "Please relaunch the command without specifying a server")
+
+        account_server = None
+        if len(cmd_args) == 3:
+            for serv in source_infos["servers"]:
+                if cmd_args[1].lower() == serv.lower():
+                    account_server = serv
+
+            if not account_server:
+                msg = ("Server {serv} doesn't exist for {src}.\n" +
+                       "List of servers for {src}: {servers}")
+                servers = ", ".join(source_infos["servers"])
+                return msg.format(serv=cmd_args[1],
+                                  src=acc_source,
+                                  servers=servers)
+
+        account_name = cmd_args[1] if len(cmd_args) == 2 else cmd_args[2]
+        try:
+            db_manager.insert_user_account(
+                discord_user_id=user_id,
+                account_source=acc_source,
+                account_server=account_server,
+                account_name=account_name)
+        except exceptions.DuplicateDbEntryWarning as e:
+            return "Warning: {0}".format(e)
+        except Exception as e:
+            logger = logging.getLogger("haruhichanbot")
+            logger.error("Exception in cmd_register_account\n" +
+                         "Msg={0}\nArgs={1}".format(e, cmd_args))
+            return "Unknown error happened, please contact administrator."
+        if account_server:
+            return "Account on {0} (server: {1}) successfully added.".format(
+                acc_source, account_server)
+        return "Account on {0} successfully added.".format(acc_source)
+
+    async def get_register_accounts_infos(self):
+        """
+        Returns a human-readable string of all games & website,
+        their aliases and their servers if applicable.
+        """
+        msg = list()
+        msg.append("```Game/Website (aliases): Servers")
+
+        for source, source_infos in (self.acc_registration_cfg
+                                         .account_sources.items()):
+            if source_infos["servers"]:
+                servs = ", ".join(source_infos["servers"])
+            else:
+                servs = "N/A"
+            if source_infos["aliases"]:
+                aliases = ", ".join(source_infos["aliases"])
+                msg.append("\t- {src} ({aliases}): {servs}".format(
+                    src=source, aliases=aliases, servs=servs))
+            else:
+                msg.append("\t- {src}: {servs}".format(
+                    src=source, servs=servs))
+        msg.append("```")
+        return "\n".join(msg)

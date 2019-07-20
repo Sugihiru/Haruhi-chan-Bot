@@ -14,6 +14,20 @@ class Config():
         self.command_prefix = parser.get(
             "Chat", "CommandPrefix")
 
+        self.sql_infos = dict()
+        self.sql_infos['username'] = parser.get("Credentials",
+                                                "SqlUsername")
+        self.sql_infos['password'] = parser.get("Credentials",
+                                                "SqlPassword")
+        self.sql_infos['host'] = parser.get("Credentials",
+                                            "SqlHost")
+        self.sql_infos['database'] = parser.get("Credentials",
+                                                "SqlDatabase")
+        self.sql_infos['port'] = parser.get("Credentials",
+                                            "SqlPort")
+        self.sql_infos['db_api'] = parser.get("Credentials",
+                                              "SqlDbApi")
+
 
 class ConfigDefaults():
     """Default configuration values"""
