@@ -83,7 +83,7 @@ class HaruhiChanBot(discord.Client):
         commands = inspect.getmembers(self, predicate=inspect.ismethod)
         commands = [cmd for cmd in commands if cmd[0].startswith("cmd_")]
 
-        help_msg = ["HaruhiChanBot commands:"]
+        help_msg = ["```", "HaruhiChanBot commands:"]
         for cmd_name, cmd_method in commands:
             # Gets the first relevant line of the docstring of the method
             doc = cmd_method.__doc__.split('\n')[1].strip()
@@ -91,6 +91,7 @@ class HaruhiChanBot(discord.Client):
                 prefix=self.config.command_prefix,
                 cmd_name=cmd_name[4:],
                 desc=doc))
+        help_msg.append("```")
         return '\n'.join(help_msg)
 
     async def cmd_random(self, cmd_args):
