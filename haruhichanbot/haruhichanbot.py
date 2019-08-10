@@ -6,18 +6,18 @@ import textwrap
 import discord
 
 from .config import Config
-from .account_registration_config import AccountRegistrationConfig
+from .commands_config import CommandsConfig
 from . import db_manager
 from . import exceptions
 
 
 class HaruhiChanBot(discord.Client):
     def __init__(self, config_file=None,
-                 account_registration_config_file=None):
+                 command_config_file=None):
         super().__init__()
         self.config = Config(config_file)
-        self.acc_registration_cfg = AccountRegistrationConfig(
-            account_registration_config_file)
+        self.cmd_cfg = CommandsConfig(
+            command_config_file)
         db_manager.init_session(self.config)
 
     def run(self):
@@ -66,6 +66,8 @@ class HaruhiChanBot(discord.Client):
         handler_kwargs = {}
         if params.pop('user_id', None):
             handler_kwargs['user_id'] = message.author.id
+        if params.pop('user', None):
+            handler_kwargs['user'] = message.author
         if params.pop('cmd_args', None):
             handler_kwargs['cmd_args'] = args
 
@@ -165,7 +167,7 @@ class HaruhiChanBot(discord.Client):
         if len(cmd_args) <= 1 or len(cmd_args) > 3:
             return "Invalid number of arguments.\n" + await help(self)
 
-        acc_source_infos = (self.acc_registration_cfg
+        acc_source_infos = (self.cmd_cfg
                                 .get_account_source_infos(cmd_args[0]))
         if not acc_source_infos:
             return ("Game/Website '{0}' not found.\n".format(cmd_args[0]) +
@@ -203,7 +205,7 @@ class HaruhiChanBot(discord.Client):
             logger = logging.getLogger("haruhichanbot")
             logger.error("Exception in cmd_register_account\n" +
                          "Msg={0}\nArgs={1}".format(e, cmd_args))
-            return "Unknown error happened, please contact administrator."
+            return "An unknown error happened, please contact administrator."
         if account_server:
             return "Account on {0} (server: {1}) successfully added.".format(
                 acc_source, account_server)
@@ -217,8 +219,7 @@ class HaruhiChanBot(discord.Client):
         msg = list()
         msg.append("```Game/Website (aliases): Servers")
 
-        for source, source_infos in (self.acc_registration_cfg
-                                         .account_sources.items()):
+        for source, source_infos in (self.cmd_cfg.account_sources.items()):
             if source_infos["servers"]:
                 servs = ", ".join(source_infos["servers"])
             else:
@@ -230,5 +231,67 @@ class HaruhiChanBot(discord.Client):
             else:
                 msg.append("\t- {src}: {servs}".format(
                     src=source, servs=servs))
+        msg.append("```")
+        return "\n".join(msg)
+
+    async def cmd_add_role(self, user, cmd_args):
+        """
+        Adds a new role to your profile on this server
+
+        Usage:
+            {command_prefix}add_role new_role
+            Ex: {command_prefix}add_role azurlane
+        """
+        async def help(self):
+            msg = "```{0}```\n{1}".format(
+                self._prettify_docstring(self.cmd_add_role.__doc__),
+                await self.get_assignable_roles())
+            return msg
+
+        if len(cmd_args) != 1:
+            return "Invalid number of arguments.\n" + await help(self)
+        if cmd_args[0] == "help":
+            return await help(self)
+
+        if cmd_args[0] not in self.cmd_cfg.roles:
+            return "Unknown role `{role}`.{assignable_roles}\n".format(
+                role=cmd_args[0],
+                assignable_roles=await self.get_assignable_roles())
+
+        role_desc = self.cmd_cfg.roles[cmd_args[0]]
+        if "cached_discord_role" not in role_desc:
+            role = user.guild.get_role(role_desc["id"])
+            if not role:
+                logger = logging.getLogger("haruhichanbot")
+                logger.error("An invalid role {role} is in the commands settings file.".format(
+                    role=cmd_args[0]))
+                return "Invalid role `{role}`. Please contact administrator.".format(
+                    role=cmd_args[0])
+            role_desc["cached_discord_role"] = role
+
+        if role_desc["cached_discord_role"] in user.roles:
+            return "Role already assigned."
+        try:
+            await user.add_roles(role_desc["cached_discord_role"])
+        except discord.Forbidden:
+            return "Invalid bot permissions. Please contact administrator."
+        except Exception as e:
+            logger = logging.getLogger("haruhichanbot")
+            logger.error("Exception in cmd_add_role\n" +
+                         "Msg={0}\nArgs={1}".format(e, cmd_args))
+            return "An unknown error happened, please contact administrator."
+        return "Role `{0}` successfully added!".format(cmd_args[0])
+
+    async def get_assignable_roles(self):
+        """
+        Returns a human-readable string of every assignable role
+        with their description.
+        """
+        msg = list()
+        msg.append("```Assignable roles:")
+        for role, role_desc in self.cmd_cfg.roles.items():
+            msg.append("\t- {role} ({title}) - {desc}".format(
+                role=role, title=role_desc["title"],
+                desc=role_desc["description"]))
         msg.append("```")
         return "\n".join(msg)

@@ -1,15 +1,16 @@
 import json
 
 
-class AccountRegistrationConfig():
+class CommandsConfig():
     def __init__(self, json_cfg_file=None):
         if not json_cfg_file:
-            json_cfg_file = AccountRegistrationConfigDefaults.json_cfg_file
+            json_cfg_file = CommandsConfigDefaults.json_cfg_file
         self.json_cfg_file = json_cfg_file
 
         with open(self.json_cfg_file, "r") as f:
-            acc_registration = json.load(f)
-        self.account_sources = acc_registration["account_sources"]
+            cfg_json = json.load(f)
+        self.account_sources = cfg_json["account_sources"]
+        self.roles = cfg_json["roles"]
 
     def get_account_source_infos(self, account_source):
         """
@@ -27,11 +28,12 @@ class AccountRegistrationConfig():
         return None
 
 
-class AccountRegistrationConfigDefaults():
+class CommandsConfigDefaults():
     """Default configuration values"""
-    json_cfg_file = "config/account_registration.json"
+    json_cfg_file = "config/commands_settings.json"
 
 
 if __name__ == '__main__':
-    cfg = AccountRegistrationConfig()
+    cfg = CommandsConfig()
     print(cfg.get_account_source_infos("al"))
+    print(cfg.roles.keys())

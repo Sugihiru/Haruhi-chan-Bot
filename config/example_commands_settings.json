@@ -1,0 +1,20 @@
+{
+    "account_sources":
+    {
+        "Name": // Without spaecs
+        {
+            "aliases": ["alias1", "alias2"], // or null
+            "servers": ["server1", "server2"] // or null
+        }
+    },
+
+    "roles":
+    {
+        "role string": // Used in the command to assign this role
+        {
+            "id": 123123, //(corresponding role ID)
+            "title": "User-friendly title for the role",
+            "description": "User-friendly description of the role"
+        }
+    }
+}
