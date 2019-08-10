@@ -66,6 +66,8 @@ class HaruhiChanBot(discord.Client):
         handler_kwargs = {}
         if params.pop('user_id', None):
             handler_kwargs['user_id'] = message.author.id
+        if params.pop('user', None):
+            handler_kwargs['user'] = message.author
         if params.pop('cmd_args', None):
             handler_kwargs['cmd_args'] = args
 
@@ -203,7 +205,7 @@ class HaruhiChanBot(discord.Client):
             logger = logging.getLogger("haruhichanbot")
             logger.error("Exception in cmd_register_account\n" +
                          "Msg={0}\nArgs={1}".format(e, cmd_args))
-            return "Unknown error happened, please contact administrator."
+            return "An unknown error happened, please contact administrator."
         if account_server:
             return "Account on {0} (server: {1}) successfully added.".format(
                 acc_source, account_server)
@@ -232,7 +234,7 @@ class HaruhiChanBot(discord.Client):
         msg.append("```")
         return "\n".join(msg)
 
-    async def cmd_add_role(self, user_id, cmd_args):
+    async def cmd_add_role(self, user, cmd_args):
         """
         Adds a new role to your profile on this server
 
@@ -252,9 +254,33 @@ class HaruhiChanBot(discord.Client):
             return await help(self)
 
         if cmd_args[0] not in self.cmd_cfg.roles:
-            return "Unknown role {role}.{assignable_roles}\n".format(
+            return "Unknown role `{role}`.{assignable_roles}\n".format(
                 role=cmd_args[0],
                 assignable_roles=await self.get_assignable_roles())
+
+        role_desc = self.cmd_cfg.roles[cmd_args[0]]
+        if "cached_discord_role" not in role_desc:
+            role = user.guild.get_role(role_desc["id"])
+            if not role:
+                logger = logging.getLogger("haruhichanbot")
+                logger.error("An invalid role {role} is in the commands settings file.".format(
+                    role=cmd_args[0]))
+                return "Invalid role `{role}`. Please contact administrator.".format(
+                    role=cmd_args[0])
+            role_desc["cached_discord_role"] = role
+
+        if role_desc["cached_discord_role"] in user.roles:
+            return "Role already assigned."
+        try:
+            await user.add_roles(role_desc["cached_discord_role"])
+        except discord.Forbidden:
+            return "Invalid bot permissions. Please contact administrator."
+        except Exception as e:
+            logger = logging.getLogger("haruhichanbot")
+            logger.error("Exception in cmd_add_role\n" +
+                         "Msg={0}\nArgs={1}".format(e, cmd_args))
+            return "An unknown error happened, please contact administrator."
+        return "Role `{0}` successfully added!".format(cmd_args[0])
 
     async def get_assignable_roles(self):
         """
