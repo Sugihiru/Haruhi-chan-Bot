@@ -29,7 +29,7 @@ class AccountRegistrationConfig():
 
 class AccountRegistrationConfigDefaults():
     """Default configuration values"""
-    json_cfg_file = "config/account_registration.json"
+    json_cfg_file = "config/commands_settings.json"
 
 
 if __name__ == '__main__':
