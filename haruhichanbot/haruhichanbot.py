@@ -258,21 +258,12 @@ class HaruhiChanBot(discord.Client):
                 role=cmd_args[0],
                 assignable_roles=await self.get_assignable_roles())
 
-        role_desc = self.cmd_cfg.roles[cmd_args[0]]
-        if "cached_discord_role" not in role_desc:
-            role = user.guild.get_role(role_desc["id"])
-            if not role:
-                logger = logging.getLogger("haruhichanbot")
-                logger.error("An invalid role {role} is in the commands settings file.".format(
-                    role=cmd_args[0]))
-                return "Invalid role `{role}`. Please contact administrator.".format(
-                    role=cmd_args[0])
-            role_desc["cached_discord_role"] = role
+        role = self.get_role_from_guild(user.guild, cmd_args[0])
 
-        if role_desc["cached_discord_role"] in user.roles:
+        if role in user.roles:
             return "Role already assigned."
         try:
-            await user.add_roles(role_desc["cached_discord_role"])
+            await user.add_roles(role)
         except discord.Forbidden:
             return "Invalid bot permissions. Please contact administrator."
         except Exception as e:
@@ -288,10 +279,67 @@ class HaruhiChanBot(discord.Client):
         with their description.
         """
         msg = list()
-        msg.append("```Assignable roles:")
+        msg.append("```Roles:")
         for role, role_desc in self.cmd_cfg.roles.items():
             msg.append("\t- {role} ({title}) - {desc}".format(
                 role=role, title=role_desc["title"],
                 desc=role_desc["description"]))
         msg.append("```")
         return "\n".join(msg)
+
+    def get_role_from_guild(self, guild, role_name):
+        """
+        Returns the Discord Role object from the guild and the role's name
+        Also caches the value
+        """
+        role_desc = self.cmd_cfg.roles[role_name]
+        if "cached_discord_role" not in role_desc:
+            role = guild.get_role(role_desc["id"])
+            if not role:
+                logger = logging.getLogger("haruhichanbot")
+                logger.error(
+                    f"An invalid role {role_name} is in " +
+                    "the commands settings file.")
+                return (f"Invalid role `{role_name}`." +
+                        " Please contact administrator.")
+            role_desc["cached_discord_role"] = role
+        return role_desc["cached_discord_role"]
+
+    async def cmd_remove_role(self, user, cmd_args):
+        """
+        Removes a role from your profile on this server
+
+        Usage:
+            {command_prefix}remove_role new_role
+            Ex: {command_prefix}remove_role azurlane
+        """
+        async def help(self):
+            msg = "```{0}```\n{1}".format(
+                self._prettify_docstring(self.cmd_remove_role.__doc__),
+                await self.get_assignable_roles())
+            return msg
+
+        if len(cmd_args) != 1:
+            return "Invalid number of arguments.\n" + await help(self)
+        if cmd_args[0] == "help":
+            return await help(self)
+
+        if cmd_args[0] not in self.cmd_cfg.roles:
+            return "Unknown role `{role}`.{assignable_roles}\n".format(
+                role=cmd_args[0],
+                assignable_roles=await self.get_assignable_roles())
+
+        role = self.get_role_from_guild(user.guild, cmd_args[0])
+
+        if role not in user.roles:
+            return "This role is not assigned to your profile."
+        try:
+            await user.remove_roles(role)
+        except discord.Forbidden:
+            return "Invalid bot permissions. Please contact administrator."
+        except Exception as e:
+            logger = logging.getLogger("haruhichanbot")
+            logger.error("Exception in cmd_remove_role\n" +
+                         "Msg={0}\nArgs={1}".format(e, cmd_args))
+            return "An unknown error happened, please contact administrator."
+        return "Role `{0}` successfully removed!".format(cmd_args[0])
