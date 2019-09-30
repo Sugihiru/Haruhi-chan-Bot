@@ -354,6 +354,45 @@ class HaruhiChanBot(discord.Client):
         msg.append("```")
         return "\n".join(msg)
 
+    async def cmd_remove_all_accounts(self, user_id, cmd_args):
+        """
+        Removes all accounts linked to your profile from the game/website/server you entered
+
+        Usage:
+            {command_prefix}remove_all_accounts acc_source [acc_server]
+            Ex: {command_prefix}remove_all_accounts azurlane sandy
+        """
+
+        if len(cmd_args) < 1 or len(cmd_args) > 2:
+            return "Invalid number of arguments.\n" + await help(self)
+
+        input_acc_server = cmd_args[1].lower() if len(cmd_args) == 2 else None
+
+        try:
+            acc_source, acc_server = \
+                self.check_and_get_account_source_and_server(cmd_args[0],
+                                                             input_acc_server)
+        except exceptions.AccountSourceNotFoundException as e:
+            return (f"Game/Website `{e.account_source}` not found.\n" +
+                    "See help for a list of available game/websites")
+        except exceptions.AccountHasNoServerWarning:
+            return ("Warning: this game/website doesn't have any servers.\n" +
+                    "Please relaunch the command without specifying a server")
+        except exceptions.AccountServerRequiredException:
+            return "You need to enter a server for this game/website."
+        except exceptions.InvalidAccountServerException as e:
+            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
+                   "List of servers for `{src}`: `{servers}`")
+            return msg.format(serv=e.input_acc_server,
+                              src=e.account_source,
+                              servers=e.account_servers)
+
+        nb_removed = db_manager.remove_server_accounts_for_user(
+            discord_user_id=user_id,
+            account_source=acc_source,
+            account_server=acc_server)
+        return f"{nb_removed} account(s) successfully deleted."
+
     async def cmd_add_role(self, user, cmd_args):
         """
         Adds a new role to your profile on this server

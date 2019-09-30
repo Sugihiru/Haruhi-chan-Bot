@@ -100,3 +100,20 @@ def get_accounts_for_source_and_server(*, account_source, account_server=None):
 
     return query.order_by(UserAccounts.account_server,
                           UserAccounts.account_name).all()
+
+
+def remove_server_accounts_for_user(*, discord_user_id,
+                                    account_source, account_server=None):
+    """Remove all accounts linked to discord user
+    on specified account_source and account_server"""
+    query = session.query(UserAccounts.account_id)
+
+    if account_server:
+        query = query.filter_by(account_source=account_source,
+                                account_server=account_server)
+    else:
+        query = query.filter_by(account_source=account_source)
+
+    nb_removed = query.delete()
+    session.commit()
+    return nb_removed
