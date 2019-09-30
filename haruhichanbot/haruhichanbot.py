@@ -167,37 +167,33 @@ class HaruhiChanBot(discord.Client):
         if len(cmd_args) <= 1 or len(cmd_args) > 3:
             return "Invalid number of arguments.\n" + await help(self)
 
-        try:
-            acc_source, source_infos = self.cmd_cfg.get_account_source_infos(
-                cmd_args[0])
-        except exceptions.NoAccountSourceInfosException:
-            return ("Game/Website `{0}` not found.\n".format(cmd_args[0]) +
-                    "See help for a list of available game/websites")
+        input_acc_server = cmd_args[1].lower() if len(cmd_args) == 3 else None
 
-        if source_infos["servers"] is None and len(cmd_args) == 3:
+        try:
+            acc_source, acc_server = \
+                self.check_and_get_account_source_and_server(cmd_args[0],
+                                                             input_acc_server)
+        except exceptions.AccountSourceNotFoundException as e:
+            return (f"Game/Website `{e.account_source}` not found.\n" +
+                    "See help for a list of available game/websites")
+        except exceptions.AccountHasNoServerWarning:
             return ("Warning: this game/website doesn't have any servers.\n" +
                     "Please relaunch the command without specifying a server")
-        if source_infos["servers"] and len(cmd_args) == 2:
+        except exceptions.AccountServerRequiredException:
             return "You need to enter a server for this game/website."
-
-        account_server = None
-        if len(cmd_args) == 3:
-            if (cmd_args[1].lower() not in
-                    [x.lower() for x in source_infos["servers"]]):
-                msg = ("Server {serv} doesn't exist for {src}.\n" +
-                       "List of servers for {src}: {servers}")
-                servers = ", ".join(source_infos["servers"])
-                return msg.format(serv=cmd_args[1],
-                                  src=acc_source,
-                                  servers=servers)
-            account_server = cmd_args[1].lower()
+        except exceptions.InvalidAccountServerException as e:
+            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
+                   "List of servers for `{src}`: `{servers}`")
+            return msg.format(serv=e.input_acc_server,
+                              src=e.account_source,
+                              servers=e.account_servers)
 
         account_name = cmd_args[1] if len(cmd_args) == 2 else cmd_args[2]
         try:
             db_manager.insert_user_account(
                 discord_user_id=user_id,
                 account_source=acc_source,
-                account_server=account_server,
+                account_server=acc_server,
                 account_name=account_name)
         except exceptions.DuplicateDbEntryWarning:
             return "Account already registered."
@@ -206,10 +202,11 @@ class HaruhiChanBot(discord.Client):
             logger.error("Exception in cmd_register_account\n" +
                          "Msg={0}\nArgs={1}".format(e, cmd_args))
             return "An unknown error happened, please contact administrator."
-        if account_server:
-            return "Account on `{0}` (server: `{1}`) successfully added.".format(
-                acc_source, account_server)
-        return "Account on `{0}` successfully added.".format(acc_source)
+
+        msg = f"Account on `{acc_source}`"
+        if acc_server:
+            msg += f"(server: `{acc_server}`) "
+        return msg + " successfully added."
 
     async def get_register_accounts_infos(self):
         """
@@ -233,6 +230,38 @@ class HaruhiChanBot(discord.Client):
                     src=source, servs=servs))
         msg.append("```")
         return "\n".join(msg)
+
+    def check_and_get_account_source_and_server(self, input_acc_source,
+                                                input_acc_server=None,
+                                                allow_empty_serv=False):
+        """
+        Checks if the input account source and server are valid
+        and returns their true name
+        """
+        try:
+            # Get the real name of the source from the potential alias
+            # Also get the infos concerning the source
+            acc_source, source_infos = self.cmd_cfg.get_account_source_infos(
+                input_acc_source)
+        except exceptions.NoAccountSourceInfosException:
+            raise exceptions.AccountSourceNotFoundException(input_acc_source)
+
+        if source_infos["servers"] is None and input_acc_server:
+            raise exceptions.AccountHasNoServerWarning()
+        if (source_infos["servers"] and not input_acc_server and
+                not allow_empty_serv):
+            raise exceptions.AccountServerRequiredException()
+
+        account_server = None
+        if input_acc_server:
+            account_server = input_acc_server.lower()
+            if (account_server not in
+                    [x.lower() for x in source_infos["servers"]]):
+                acc_servers = ", ".join(source_infos["servers"])
+                raise exceptions.InvalidAccountServerException(
+                    input_acc_server, acc_source, acc_servers)
+
+        return acc_source, account_server
 
     async def cmd_list_self_accounts(self, user_id):
         """
@@ -279,37 +308,32 @@ class HaruhiChanBot(discord.Client):
         if len(cmd_args) < 1 or len(cmd_args) > 2:
             return "Invalid number of arguments.\n" + await help(self)
 
+        input_acc_server = cmd_args[1].lower() if len(cmd_args) == 2 else None
         try:
-            acc_source, source_infos = self.cmd_cfg.get_account_source_infos(
-                cmd_args[0])
-        except exceptions.NoAccountSourceInfosException:
-            return ("Game/Website `{0}` not found.\n".format(cmd_args[0]) +
+            acc_source, acc_server = \
+                self.check_and_get_account_source_and_server(
+                    cmd_args[0], input_acc_server, allow_empty_serv=True)
+        except exceptions.AccountSourceNotFoundException as e:
+            return (f"Game/Website `{e.account_source}` not found.\n" +
                     "See help for a list of available game/websites")
-
-        if source_infos["servers"] is None and len(cmd_args) == 2:
+        except exceptions.AccountHasNoServerWarning:
             return ("Warning: this game/website doesn't have any servers.\n" +
                     "Please relaunch the command without specifying a server")
-
-        account_server = None
-        if len(cmd_args) == 2:
-            account_server = cmd_args[1].lower()
-            if (account_server not in
-                    [x.lower() for x in source_infos["servers"]]):
-                msg = ("Server {serv} doesn't exist for {src}.\n" +
-                       "List of servers for {src}: {servers}")
-                servers = ", ".join(source_infos["servers"])
-                return msg.format(serv=cmd_args[1],
-                                  src=acc_source,
-                                  servers=servers)
+        except exceptions.InvalidAccountServerException as e:
+            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
+                   "List of servers for `{src}`: `{servers}`")
+            return msg.format(serv=e.input_acc_server,
+                              src=e.account_source,
+                              servers=e.account_servers)
 
         accounts = db_manager.get_accounts_for_source_and_server(
             account_source=acc_source,
-            account_server=account_server)
+            account_server=acc_server)
 
         if not accounts:
             msg = f"No accounts for {acc_source}"
             if len(cmd_args) == 2:
-                msg += f" in server {account_server}"
+                msg += f" in server {acc_server}"
             return msg
 
         users_cache = dict()
