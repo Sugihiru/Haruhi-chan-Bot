@@ -85,3 +85,15 @@ def get_accounts_for_user(discord_user_id):
                              UserAccounts.account_server,
                              UserAccounts.account_name)
                    .all())
+
+
+def get_accounts_for_source_and_server(*, account_source, account_server=None):
+    print(account_source)
+    print(account_server)
+    return (session.query(UserAccounts.account_source,
+                          UserAccounts.account_server,
+                          UserAccounts.account_name)
+                   .filter_by(account_source=account_source,
+                              account_server=account_server)
+                   .order_by(UserAccounts.account_name)
+                   .all())

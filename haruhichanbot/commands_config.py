@@ -1,5 +1,7 @@
 import json
 
+from . import exceptions
+
 
 class CommandsConfig():
     def __init__(self, json_cfg_file=None):
@@ -16,7 +18,7 @@ class CommandsConfig():
         """
         Returns the real name and the informations of the account_source
         Also manages account sources aliases
-        Returns None if no infos were found
+        Raises exception.NoAccountSourceInfosException if no infos were found
         """
         for source, source_infos in self.account_sources.items():
             if account_source.lower() == source.lower():
@@ -25,7 +27,7 @@ class CommandsConfig():
                 for alias in source_infos["aliases"]:
                     if account_source.lower() == alias.lower():
                         return (source, source_infos)
-        return None
+        raise exceptions.NoAccountSourceInfosException()
 
 
 class CommandsConfigDefaults():

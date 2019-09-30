@@ -167,30 +167,30 @@ class HaruhiChanBot(discord.Client):
         if len(cmd_args) <= 1 or len(cmd_args) > 3:
             return "Invalid number of arguments.\n" + await help(self)
 
-        acc_source_infos = (self.cmd_cfg
-                                .get_account_source_infos(cmd_args[0]))
-        if not acc_source_infos:
+        try:
+            acc_source, source_infos = self.cmd_cfg.get_account_source_infos(
+                cmd_args[0])
+        except exceptions.NoAccountSourceInfosException:
             return ("Game/Website '{0}' not found.\n".format(cmd_args[0]) +
                     "See help for a list of available game/websites")
 
-        acc_source, source_infos = acc_source_infos
         if source_infos["servers"] is None and len(cmd_args) == 3:
             return ("Warning: this game/website doesn't have any servers.\n" +
                     "Please relaunch the command without specifying a server")
+        if source_infos["servers"] and len(cmd_args) == 2:
+            return "You need to enter a server for this game/website."
 
         account_server = None
         if len(cmd_args) == 3:
-            for serv in source_infos["servers"]:
-                if cmd_args[1].lower() == serv.lower():
-                    account_server = serv
-
-            if not account_server:
+            if (cmd_args[1].lower() not in
+                    [x.lower() for x in source_infos["servers"]]):
                 msg = ("Server {serv} doesn't exist for {src}.\n" +
                        "List of servers for {src}: {servers}")
                 servers = ", ".join(source_infos["servers"])
                 return msg.format(serv=cmd_args[1],
                                   src=acc_source,
                                   servers=servers)
+            account_server = cmd_args[1].lower()
 
         account_name = cmd_args[1] if len(cmd_args) == 2 else cmd_args[2]
         try:
@@ -199,8 +199,8 @@ class HaruhiChanBot(discord.Client):
                 account_source=acc_source,
                 account_server=account_server,
                 account_name=account_name)
-        except exceptions.DuplicateDbEntryWarning as e:
-            return "Warning: {0}".format(e)
+        except exceptions.DuplicateDbEntryWarning:
+            return "Account already registered."
         except Exception as e:
             logger = logging.getLogger("haruhichanbot")
             logger.error("Exception in cmd_register_account\n" +

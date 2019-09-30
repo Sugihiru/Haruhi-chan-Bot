@@ -5,3 +5,7 @@ class HaruhiChanBotException(Exception):
 
 class DuplicateDbEntryWarning(HaruhiChanBotException):
     pass
+
+
+class NoAccountSourceInfosException(HaruhiChanBotException):
+    pass
