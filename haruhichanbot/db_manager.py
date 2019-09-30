@@ -117,3 +117,20 @@ def remove_server_accounts_for_user(*, discord_user_id,
     nb_removed = query.delete()
     session.commit()
     return nb_removed
+
+
+def remove_account(*, discord_user_id,
+                   account_source,
+                   account_server=None,
+                   account_name):
+    """Remove a specific account"""
+    query = session.query(UserAccounts.account_id)
+
+    query = query.filter_by(account_source=account_source,
+                            account_name=account_name)
+    if account_server:
+        query = query.filter_by(account_server=account_server)
+
+    nb_removed = query.delete()
+    session.commit()
+    return nb_removed

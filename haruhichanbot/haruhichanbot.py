@@ -188,7 +188,7 @@ class HaruhiChanBot(discord.Client):
                               src=e.account_source,
                               servers=e.account_servers)
 
-        account_name = cmd_args[1] if len(cmd_args) == 2 else cmd_args[2]
+        account_name = cmd_args[-1]
         try:
             db_manager.insert_user_account(
                 discord_user_id=user_id,
@@ -362,6 +362,11 @@ class HaruhiChanBot(discord.Client):
             {command_prefix}remove_all_accounts acc_source [acc_server]
             Ex: {command_prefix}remove_all_accounts azurlane sandy
         """
+        async def help(self):
+            msg = "```{0}```\n{1}".format(
+                self._prettify_docstring(self.cmd_remove_all_accounts.__doc__),
+                await self.get_register_accounts_infos())
+            return msg
 
         if len(cmd_args) < 1 or len(cmd_args) > 2:
             return "Invalid number of arguments.\n" + await help(self)
@@ -392,6 +397,52 @@ class HaruhiChanBot(discord.Client):
             account_source=acc_source,
             account_server=acc_server)
         return f"{nb_removed} account(s) successfully deleted."
+
+    async def cmd_remove_account(self, user_id, cmd_args):
+        """
+        Removes one specific account linked to your profile.
+
+        Usage:
+            {command_prefix}remove_accounts acc_source [acc_server] acc_name
+            Ex: {command_prefix}remove_all_accounts azurlane sandy yourname
+        """
+        async def help(self):
+            msg = "```{0}```".format(
+                self._prettify_docstring(self.cmd_remove_account.__doc__))
+            return msg
+
+        if len(cmd_args) < 2 or len(cmd_args) > 3:
+            return "Invalid number of arguments.\n" + await help(self)
+
+        input_acc_server = cmd_args[1].lower() if len(cmd_args) == 3 else None
+
+        try:
+            acc_source, acc_server = \
+                self.check_and_get_account_source_and_server(cmd_args[0],
+                                                             input_acc_server)
+        except exceptions.AccountSourceNotFoundException as e:
+            return (f"Game/Website `{e.account_source}` not found.\n" +
+                    "See help for a list of available game/websites")
+        except exceptions.AccountHasNoServerWarning:
+            return ("Warning: this game/website doesn't have any servers.\n" +
+                    "Please relaunch the command without specifying a server")
+        except exceptions.AccountServerRequiredException:
+            return "You need to enter a server for this game/website."
+        except exceptions.InvalidAccountServerException as e:
+            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
+                   "List of servers for `{src}`: `{servers}`")
+            return msg.format(serv=e.input_acc_server,
+                              src=e.account_source,
+                              servers=e.account_servers)
+
+        nb_removed = db_manager.remove_account(
+            discord_user_id=user_id,
+            account_source=acc_source,
+            account_server=acc_server,
+            account_name=cmd_args[-1])
+        if nb_removed == 1:
+            return "Account successfully deleted."
+        return "No account with this name found."
 
     async def cmd_add_role(self, user, cmd_args):
         """
