@@ -173,20 +173,11 @@ class HaruhiChanBot(discord.Client):
             acc_source, acc_server = \
                 self.check_and_get_account_source_and_server(cmd_args[0],
                                                              input_acc_server)
-        except exceptions.AccountSourceNotFoundException as e:
-            return (f"Game/Website `{e.account_source}` not found.\n" +
-                    "See help for a list of available game/websites")
-        except exceptions.AccountHasNoServerWarning:
-            return ("Warning: this game/website doesn't have any servers.\n" +
-                    "Please relaunch the command without specifying a server")
-        except exceptions.AccountServerRequiredException:
-            return "You need to enter a server for this game/website."
-        except exceptions.InvalidAccountServerException as e:
-            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
-                   "List of servers for `{src}`: `{servers}`")
-            return msg.format(serv=e.input_acc_server,
-                              src=e.account_source,
-                              servers=e.account_servers)
+        except (exceptions.AccountSourceNotFoundException,
+                exceptions.AccountHasNoServerWarning,
+                exceptions.AccountServerRequiredException,
+                exceptions.InvalidAccountServerException) as e:
+            return str(e)
 
         account_name = cmd_args[-1]
         try:
@@ -313,18 +304,10 @@ class HaruhiChanBot(discord.Client):
             acc_source, acc_server = \
                 self.check_and_get_account_source_and_server(
                     cmd_args[0], input_acc_server, allow_empty_serv=True)
-        except exceptions.AccountSourceNotFoundException as e:
-            return (f"Game/Website `{e.account_source}` not found.\n" +
-                    "See help for a list of available game/websites")
-        except exceptions.AccountHasNoServerWarning:
-            return ("Warning: this game/website doesn't have any servers.\n" +
-                    "Please relaunch the command without specifying a server")
-        except exceptions.InvalidAccountServerException as e:
-            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
-                   "List of servers for `{src}`: `{servers}`")
-            return msg.format(serv=e.input_acc_server,
-                              src=e.account_source,
-                              servers=e.account_servers)
+        except (exceptions.AccountSourceNotFoundException,
+                exceptions.AccountHasNoServerWarning,
+                exceptions.InvalidAccountServerException) as e:
+            return str(e)
 
         accounts = db_manager.get_accounts_for_source_and_server(
             account_source=acc_source,
@@ -377,20 +360,11 @@ class HaruhiChanBot(discord.Client):
             acc_source, acc_server = \
                 self.check_and_get_account_source_and_server(cmd_args[0],
                                                              input_acc_server)
-        except exceptions.AccountSourceNotFoundException as e:
-            return (f"Game/Website `{e.account_source}` not found.\n" +
-                    "See help for a list of available game/websites")
-        except exceptions.AccountHasNoServerWarning:
-            return ("Warning: this game/website doesn't have any servers.\n" +
-                    "Please relaunch the command without specifying a server")
-        except exceptions.AccountServerRequiredException:
-            return "You need to enter a server for this game/website."
-        except exceptions.InvalidAccountServerException as e:
-            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
-                   "List of servers for `{src}`: `{servers}`")
-            return msg.format(serv=e.input_acc_server,
-                              src=e.account_source,
-                              servers=e.account_servers)
+        except (exceptions.AccountSourceNotFoundException,
+                exceptions.AccountHasNoServerWarning,
+                exceptions.AccountServerRequiredException,
+                exceptions.InvalidAccountServerException) as e:
+            return str(e)
 
         nb_removed = db_manager.remove_server_accounts_for_user(
             discord_user_id=user_id,
@@ -420,20 +394,11 @@ class HaruhiChanBot(discord.Client):
             acc_source, acc_server = \
                 self.check_and_get_account_source_and_server(cmd_args[0],
                                                              input_acc_server)
-        except exceptions.AccountSourceNotFoundException as e:
-            return (f"Game/Website `{e.account_source}` not found.\n" +
-                    "See help for a list of available game/websites")
-        except exceptions.AccountHasNoServerWarning:
-            return ("Warning: this game/website doesn't have any servers.\n" +
-                    "Please relaunch the command without specifying a server")
-        except exceptions.AccountServerRequiredException:
-            return "You need to enter a server for this game/website."
-        except exceptions.InvalidAccountServerException as e:
-            msg = ("Server `{serv}` doesn't exist for `{src}`.\n" +
-                   "List of servers for `{src}`: `{servers}`")
-            return msg.format(serv=e.input_acc_server,
-                              src=e.account_source,
-                              servers=e.account_servers)
+        except (exceptions.AccountSourceNotFoundException,
+                exceptions.AccountHasNoServerWarning,
+                exceptions.AccountServerRequiredException,
+                exceptions.InvalidAccountServerException) as e:
+            return str(e)
 
         nb_removed = db_manager.remove_account(
             discord_user_id=user_id,
