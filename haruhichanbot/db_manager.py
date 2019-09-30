@@ -72,3 +72,16 @@ def insert_user_account(*, discord_user_id,
                          comment=comment)
     session.add(dbobj)
     session.commit()
+
+
+def get_accounts_for_user(discord_user_id):
+    """Get all accounts linked to Discord user
+    Sorted by source, server (if applicable) and name"""
+    return (session.query(UserAccounts.account_source,
+                          UserAccounts.account_server,
+                          UserAccounts.account_name)
+                   .filter_by(discord_user_id=discord_user_id)
+                   .order_by(UserAccounts.account_source,
+                             UserAccounts.account_server,
+                             UserAccounts.account_name)
+                   .all())

@@ -234,6 +234,31 @@ class HaruhiChanBot(discord.Client):
         msg.append("```")
         return "\n".join(msg)
 
+    async def cmd_list_self_accounts(self, user_id):
+        """
+        Lists account that belongs to your profile on this server
+
+        Usage:
+            {command_prefix}list_self_accounts
+        """
+
+        accounts = db_manager.get_accounts_for_user(user_id)
+        if not accounts:
+            return "You have no accounts registered on this server."
+
+        msg = list()
+        msg.append("Your accounts:```")
+        for account in accounts:
+            if not account.account_server:
+                msg.append(f"{account.account_source}: {account.account_name}")
+            else:
+                msg.append(f"{account.account_source}" +
+                           f" (server: {account.account_server}): " +
+                           account.account_name)
+
+        msg.append("```")
+        return "\n".join(msg)
+
     async def cmd_add_role(self, user, cmd_args):
         """
         Adds a new role to your profile on this server
