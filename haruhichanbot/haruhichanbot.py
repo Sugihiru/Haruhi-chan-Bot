@@ -171,7 +171,7 @@ class HaruhiChanBot(discord.Client):
             acc_source, source_infos = self.cmd_cfg.get_account_source_infos(
                 cmd_args[0])
         except exceptions.NoAccountSourceInfosException:
-            return ("Game/Website '{0}' not found.\n".format(cmd_args[0]) +
+            return ("Game/Website `{0}` not found.\n".format(cmd_args[0]) +
                     "See help for a list of available game/websites")
 
         if source_infos["servers"] is None and len(cmd_args) == 3:
@@ -207,9 +207,9 @@ class HaruhiChanBot(discord.Client):
                          "Msg={0}\nArgs={1}".format(e, cmd_args))
             return "An unknown error happened, please contact administrator."
         if account_server:
-            return "Account on {0} (server: {1}) successfully added.".format(
+            return "Account on `{0}` (server: `{1}`) successfully added.".format(
                 acc_source, account_server)
-        return "Account on {0} successfully added.".format(acc_source)
+        return "Account on `{0}` successfully added.".format(acc_source)
 
     async def get_register_accounts_infos(self):
         """
@@ -255,6 +255,77 @@ class HaruhiChanBot(discord.Client):
                 msg.append(f"{account.account_source}" +
                            f" (server: {account.account_server}): " +
                            account.account_name)
+
+        msg.append("```")
+        return "\n".join(msg)
+
+    async def cmd_list_accounts(self, user_id, cmd_args):
+        """
+        Lists account for a specific source and optionally server
+
+        Usage:
+            {command_prefix}list_accounts acc_source [acc_server]
+            Ex: {command_prefix}list_accounts azurlane sandy
+        """
+
+        async def help(self):
+            msg = "```{0}```\n{1}".format(
+                self._prettify_docstring(self.cmd_list_accounts.__doc__),
+                await self.get_register_accounts_infos())
+            return msg
+
+        if len(cmd_args) == 1 and cmd_args[0] == "help":
+            return await help(self)
+        if len(cmd_args) < 1 or len(cmd_args) > 2:
+            return "Invalid number of arguments.\n" + await help(self)
+
+        try:
+            acc_source, source_infos = self.cmd_cfg.get_account_source_infos(
+                cmd_args[0])
+        except exceptions.NoAccountSourceInfosException:
+            return ("Game/Website `{0}` not found.\n".format(cmd_args[0]) +
+                    "See help for a list of available game/websites")
+
+        if source_infos["servers"] is None and len(cmd_args) == 2:
+            return ("Warning: this game/website doesn't have any servers.\n" +
+                    "Please relaunch the command without specifying a server")
+
+        account_server = None
+        if len(cmd_args) == 2:
+            account_server = cmd_args[1].lower()
+            if (account_server not in
+                    [x.lower() for x in source_infos["servers"]]):
+                msg = ("Server {serv} doesn't exist for {src}.\n" +
+                       "List of servers for {src}: {servers}")
+                servers = ", ".join(source_infos["servers"])
+                return msg.format(serv=cmd_args[1],
+                                  src=acc_source,
+                                  servers=servers)
+
+        accounts = db_manager.get_accounts_for_source_and_server(
+            account_source=acc_source,
+            account_server=account_server)
+
+        if not accounts:
+            msg = f"No accounts for {acc_source}"
+            if len(cmd_args) == 2:
+                msg += f" in server {account_server}"
+            return msg
+
+        users_cache = dict()
+        msg = list()
+        msg.append(f"Accounts for {acc_source}:```")
+        prev_server = None
+        for account in accounts:
+            if account.discord_user_id not in users_cache:
+                users_cache[account.discord_user_id] = await self.fetch_user(
+                    account.discord_user_id)
+            if account.account_server != prev_server:
+                msg.append(f"--- Server {account.account_server} ---")
+                prev_server = account.account_server
+            msg.append("{discord_user}: {acc}".format(
+                discord_user=users_cache[account.discord_user_id],
+                acc=account.account_name))
 
         msg.append("```")
         return "\n".join(msg)

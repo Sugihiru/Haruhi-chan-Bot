@@ -88,12 +88,15 @@ def get_accounts_for_user(discord_user_id):
 
 
 def get_accounts_for_source_and_server(*, account_source, account_server=None):
-    print(account_source)
-    print(account_server)
-    return (session.query(UserAccounts.account_source,
+    query = session.query(UserAccounts.discord_user_id,
                           UserAccounts.account_server,
                           UserAccounts.account_name)
-                   .filter_by(account_source=account_source,
-                              account_server=account_server)
-                   .order_by(UserAccounts.account_name)
-                   .all())
+
+    if account_server:
+        query = query.filter_by(account_source=account_source,
+                                account_server=account_server)
+    else:
+        query = query.filter_by(account_source=account_source)
+
+    return query.order_by(UserAccounts.account_server,
+                          UserAccounts.account_name).all()
